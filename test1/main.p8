@@ -2,24 +2,30 @@ pico-8 cartridge // http://www.pico-8.com
 version 34
 __lua__
 function _init()
- msg="hello pico-8"
- x=40 y=64
- dx=1 dy=1
+ x=40
+ y=64
+ dx=1
+ dy=1
  -- load art assets (TODO hot swap sprite sheet, overloads currently)
  import('sprites/helloworld.png')
- import('sprites/jamie.png')
+ w = 10
+ h = 1
+ -- import('sprites/jamie.png') TODO render multi sprite
 end
 
 function _update()
- x+=dx y+=dy
- if x<1 or x>128-#msg*4 then
-  dx*=-1
- elseif y<1 or y>127-5 then
-  dy*=-1
+ x+=dx
+ y+=dy
+ touchleft = x<1
+ touchright = x>128-w*8
+ touchup = y<1
+ touchdown = y>128-h*8
+ if touchleft or touchright then dx*=-1
+ elseif touchup or touchdown then dy*=-1
  end
 end
 
 function _draw()
  cls(1)
- print(msg,x,y,8+dx+dy)
+ spr(1, x, y, w, h)
 end
