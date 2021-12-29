@@ -6,6 +6,8 @@ function _init()
  y=64
  dx=1
  dy=1
+ -- TODO jamie sprite only
+ -- import('sprites/jamie.png')
  import('sprites/helloworld.png')
  w = 10
  h = 1
