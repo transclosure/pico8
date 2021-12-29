@@ -5,6 +5,8 @@ function _init()
  msg="hello pico-8"
  x=40 y=64
  dx=1 dy=1
+ -- load art assets
+ import('sprites/helloworld.png')
 end
 
 function _update()
