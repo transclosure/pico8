@@ -5,8 +5,9 @@ function _init()
  msg="hello pico-8"
  x=40 y=64
  dx=1 dy=1
- -- load art assets
+ -- load art assets (TODO hot swap sprite sheet, overloads currently)
  import('sprites/helloworld.png')
+ import('sprites/jamie.png')
 end
 
 function _update()
