@@ -2,12 +2,12 @@ pico-8 cartridge // http://www.pico-8.com
 version 34
 __lua__
 function _init()
- x=20
- y=32
  dx=1
  dy=1
  import('sprites/jamie.png')
  s = 52
+ x = 20
+ y = 32
  w = 8
  h = 9
 end
