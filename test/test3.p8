@@ -2,11 +2,11 @@ pico-8 cartridge // http://www.pico-8.com
 version 34
 __lua__
 function _init()
- spriteA = 'sprites/helloworld.png'
- As=1 Aw=10 Ah=1          -- sprite dimensions
+ sprites = 'spritesheet.png'
+ import(sprites)
+ As=0 Aw=10 Ah=1          -- sprite dimensions
  Ax=40 Ay=64 Adx=1 Ady=1  -- in-game position/velocity
- spriteB = 'sprites/jamie.png'
- Bs=52 Bw=8 Bh=9          -- sprite dimensions
+ Bs=52 Bw=9 Bh=9          -- sprite dimensions
  Bdx=1 Bdy=1 Bx=20 By=32  -- in-game position/velocity
 end
 
@@ -34,9 +34,7 @@ end
 function _draw()
  cls(1)
  -- draw spriteA
- import(spriteA)
  spr(As, Ax, Ay, Aw, Ah)
  -- draw spriteB
- import(spriteB)
  spr(Bs, Bx, By, Bw, Bh)
 end
