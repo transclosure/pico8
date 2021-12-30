@@ -9,11 +9,8 @@ end
 
 function _update()
  x+=dx y+=dy
- if x<1 or x>128-#msg*4 then
-  dx*=-1
- elseif y<1 or y>127-5 then
-  dy*=-1
- end
+ if x<1 or x>127-#msg*4 then dx*=-1 end
+ if y<1 or y>127-5 then dy*=-1 end
 end
 
 function _draw()
