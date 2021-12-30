@@ -4,11 +4,12 @@ __lua__
 
 -- Sprite Abstraction
 Sprite={} Sprite.__index=Sprite
-function Sprite:init(f,s,w,h,x,y,dx,dy)
+Sprite.sheet='spritesheet.png'
+function Sprite:init(s,w,h,x,y,dx,dy)
    local sprt = {}           -- our object object
    setmetatable(sprt,Sprite) -- make Sprite class lookup
    -- initialize our sprite object
-   sprt.f=f sprt.s=s sprt.w=w sprt.h=h      -- sprite sheet and dimensions
+   sprt.s=s sprt.w=w sprt.h=h               -- sprite dimensions in sheet
    sprt.x=x sprt.y=y sprt.dx=dx sprt.dy=dy  -- in-game position/velocity
    return sprt
 end
@@ -23,14 +24,14 @@ function Sprite:update()
  if touchup or touchdown then self.dy*=-1 end
 end
 function Sprite:draw()
- import(self.f) -- TODO dont want this to render!
  spr(self.s, self.x, self.y, self.w, self.h)
 end
 
 -- PICO8 Functions
 function _init()
- spriteA = Sprite:init('sprites/helloworld.png',1,10,1,40,64,1,1)
- spriteB = Sprite:init('sprites/jamie.png',52,8,9,20,32,1,1)
+ import(Sprite.sheet)
+ spriteA = Sprite:init(0,10,1,40,64,1,1)
+ spriteB = Sprite:init(52,9,9,20,32,1,1)
 end
 function _update()
  spriteA:update()
