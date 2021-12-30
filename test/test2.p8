@@ -4,11 +4,11 @@ __lua__
 function _init()
  dx=1
  dy=1
- import('sprites/jamie.png')
+ import('spritesheet.png')
  s = 52
  x = 20
  y = 32
- w = 8
+ w = 9
  h = 9
 end
 
