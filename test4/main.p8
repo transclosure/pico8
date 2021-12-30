@@ -1,42 +1,43 @@
 pico-8 cartridge // http://www.pico-8.com
 version 34
 __lua__
+
+-- Sprite Abstraction
+Sprite={} Sprite.__index=Sprite
+function Sprite:init(f,s,w,h,x,y,dx,dy)
+   local sprt = {}           -- our object object
+   setmetatable(sprt,Sprite) -- make Sprite class lookup
+   -- initialize our sprite object
+   sprt.f=f sprt.s=s sprt.w=w sprt.h=h      -- sprite sheet and dimensions
+   sprt.x=x sprt.y=y sprt.dx=dx sprt.dy=dy  -- in-game position/velocity
+   return sprt
+end
+function Sprite:update()
+ self.x+=self.dx
+ self.y+=self.dy
+ local touchleft = self.x<1
+ local touchright = self.x>127-self.w*8
+ local touchup = self.y<1
+ local touchdown = self.y>127-self.h*8
+ if touchleft or touchright then self.dx*=-1 end
+ if touchup or touchdown then self.dy*=-1 end
+end
+function Sprite:draw()
+ import(self.f) -- TODO dont want this to render!
+ spr(self.s, self.x, self.y, self.w, self.h)
+end
+
+-- PICO8 Functions
 function _init()
- spriteA = 'sprites/helloworld.png'
- As=1 Aw=10 Ah=1          -- sprite dimensions
- Ax=40 Ay=64 Adx=1 Ady=1  -- in-game position/velocity
- spriteB = 'sprites/jamie.png'
- Bs=52 Bw=8 Bh=9          -- sprite dimensions
- Bdx=1 Bdy=1 Bx=20 By=32  -- in-game position/velocity
+ spriteA = Sprite:init('sprites/helloworld.png',1,10,1,40,64,1,1)
+ spriteB = Sprite:init('sprites/jamie.png',52,8,9,20,32,1,1)
 end
-
 function _update()
- -- update spriteA
- Ax+=Adx
- Ay+=Ady
- Atouchleft = Ax<1
- Atouchright = Ax>127-Aw*8
- Atouchup = Ay<1
- Atouchdown = Ay>127-Ah*8
- if Atouchleft or Atouchright then Adx*=-1 end
- if Atouchup or Atouchdown then Ady*=-1 end
- -- update spriteB
- Bx+=Bdx
- By+=Bdy
- Btouchleft = Bx<1
- Btouchright = Bx>127-Bw*8
- Btouchup = By<1
- Btouchdown = By>127-Bh*8
- if Btouchleft or Btouchright then Bdx*=-1 end
- if Btouchup or Btouchdown then Bdy*=-1 end
+ spriteA:update()
+ spriteB:update()
 end
-
 function _draw()
  cls(1)
- -- draw spriteA
- import(spriteA)
- spr(As, Ax, Ay, Aw, Ah)
- -- draw spriteB
- import(spriteB)
- spr(Bs, Bx, By, Bw, Bh)
+ spriteA:draw()
+ spriteB:draw()
 end
