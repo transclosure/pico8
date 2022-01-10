@@ -28,6 +28,7 @@ function Ball:init()
  return ball
 end
 function Ball:update()
+ -- TODO replace with 2d array collision lookup
  self.x+=self.dx
  self.y+=self.dy
  local touchleft = self.x<1
@@ -43,40 +44,35 @@ end
 --[[
 Brick
 --]]
-BrickMap={} -- FIXME use pico8 map editor not our own code
-Pos={} Pos.__index=Pos
-function Pos:init(x,y)
- local pos={}
- setmetatable(pos,Pos)
- pos.x=x pos.y=y
- return pos
-end
 Brick={} Brick.__index=Brick
 function Brick:init(x,y)
+ -- TODO support multiple colors / game logic
  local brick={}                   -- Brick Object
  setmetatable(brick,Brick)        -- Brick Instantiation
  brick.sprite=Sprite:init(24,2,1) -- Brick Sprite
- local pos=Pos:init(x,y)          -- Brick position
- brick.pos=pos
- add(BrickMap,brick) -- TODO index by position
+ brick.x=x brick.y=y              -- Brick position
  return brick
 end
 function Brick:draw()
- self.sprite:draw(self.pos.x,self.pos.y)
+ self.sprite:draw(self.x,self.y)
 end
 --[[
 PICO8 Functions
 --]]
+map = {}
 function _init()
  import(Sprite.sheet)
  ball = Ball:init()
- for y=0,127,8 do
-  Brick:init(0-12,y)   -- touchleft bricks
-  Brick:init(128-4,y) -- touchright bricks
- end
+ -- FIXME use pico8 built-in map functionality
  for x=0,127,16 do
-  Brick:init(x,0-4)   -- touchup bricks
-  Brick:init(x,128-4) -- touchdown bricks
+  map[x] = {}
+  for y=0,127,8 do
+   -- gray bricks
+   if x==0 or x==112 or y==0 or y==120 then
+    map[x][y] = Brick:init(x,y)
+   end
+   -- TODO other colors
+  end
  end
 end
 function _update()
@@ -84,8 +80,11 @@ function _update()
 end
 function _draw()
  cls(0)
- ball:draw()
- for brick in all(BrickMap) do
-  brick:draw()
+ -- FIXME use pico8 built-in map functionality
+ for x=0,127,16 do
+  for y=0,127,8 do
+   if map[x][y]!=nil then map[x][y]:draw() end
+  end
  end
+ ball:draw()
 end
