@@ -22,7 +22,7 @@ Ball={} Ball.__index=Ball
 function Ball:init()
    local ball={}                   -- Ball Object
    setmetatable(ball,Ball)         -- Ball Class lookup
-   ball.x=rnd(128) ball.y=rnd(128) -- Ball random start pos
+   ball.x=rnd(127) ball.y=rnd(127) -- Ball random start pos
    ball.sprite=Sprite:init(13,1,1) -- Ball Sprite
    ball.dx=1 ball.dy=1             -- Ball Physics
    return ball
