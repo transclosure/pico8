@@ -71,12 +71,12 @@ function _init()
  import(Sprite.sheet)
  ball = Ball:init()
  for y=0,127,8 do
-  Brick:init(0-14,y)   -- touchleft bricks
-  Brick:init(127-2,y) -- touchright bricks
+  Brick:init(0-12,y)   -- touchleft bricks
+  Brick:init(128-4,y) -- touchright bricks
  end
  for x=0,127,16 do
-  Brick:init(x,0-6)   -- touchup bricks
-  Brick:init(x,127-2) -- touchdown bricks
+  Brick:init(x,0-4)   -- touchup bricks
+  Brick:init(x,128-4) -- touchdown bricks
  end
 end
 function _update()
