@@ -30,15 +30,12 @@ end
 -- PICO8 Functions
 function _init()
  import(Sprite.sheet)
- spriteA = Sprite:init(0,10,1,40,64,1,1)
- spriteB = Sprite:init(52,9,9,20,32,1,1)
+ ball = Sprite:init(13,1,1,40,64,1,1) -- TODO random start pos / magic numbers
 end
 function _update()
- spriteA:update()
- spriteB:update()
+ ball:update()
 end
 function _draw()
  cls(1)
- spriteA:draw()
- spriteB:draw()
+ ball:draw()
 end
