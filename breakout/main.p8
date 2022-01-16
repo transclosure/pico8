@@ -20,11 +20,11 @@ Ball
 --]]
 Ball={} Ball.__index=Ball
 function Ball:init()
- local ball={}                   -- Ball Object
- setmetatable(ball,Ball)         -- Ball Instantiation
- ball.sprite=Sprite:init(13,1,1) -- Ball Sprite
+ local ball={}                       -- Ball Object
+ setmetatable(ball,Ball)             -- Ball Instantiation
+ ball.sprite=Sprite:init(13,1,1)     -- Ball Sprite
  ball.x=rnd(127-8) ball.y=rnd(127-8) -- Ball random start pos
- ball.dx=1 ball.dy=1             -- Ball Physics
+ ball.dx=1 ball.dy=1                 -- Ball Physics
  return ball
 end
 function Ball:update()
@@ -57,12 +57,12 @@ function Brick:draw()
  self.sprite:draw(self.x,self.y)
 end
 --[[
-PICO8 Functions
+Map
 --]]
-map = {}
-function _init()
- import(Sprite.sheet)
- ball = Ball:init()
+Map={} Map.__index=Map
+function Map:init()
+ local map={}
+ setmetatable(map,Map)
  -- FIXME use pico8 built-in map functionality
  for x=0,127,16 do
   map[x] = {}
@@ -74,17 +74,34 @@ function _init()
    -- TODO other colors
   end
  end
+ return map
+end
+function Map:draw()
+ -- FIXME use pico8 built-in map functionality
+ for x=0,127 do
+  for y=0,127 do
+   if self[x]!=nil then
+    if self[x][y]!=nil then
+     self[x][y]:draw()
+    end
+   end
+  end
+ end
+end
+--[[
+PICO8 Functions
+--]]
+function _init()
+ import(Sprite.sheet)
+ ball = Ball:init()
+ map = Map:init()
 end
 function _update()
  ball:update()
 end
 function _draw()
  cls(0)
- -- FIXME use pico8 built-in map functionality
- for x=0,127,16 do
-  for y=0,127,8 do
-   if map[x][y]!=nil then map[x][y]:draw() end
-  end
- end
+ map:draw()
  ball:draw()
+ print(stat(7),3)
 end
