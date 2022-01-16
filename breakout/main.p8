@@ -61,33 +61,35 @@ Map
 --]]
 Map={} Map.__index=Map
 function Map:init()
- local map={}
- setmetatable(map,Map)
- -- FIXME use pico8 built-in map functionality
- for x=0,127,16 do
-  map[x] = {}
-  for y=0,127,8 do
-   -- gray bricks
-   if x==0 or x==112 or y==0 or y==120 then
-    map[x][y] = Brick:init(x,y)
-   end
-   -- TODO other colors
+ local map={}          -- Map Object
+ setmetatable(map,Map) -- Map Instantiation
+ for x=0,127 do        -- Screen width
+  map[x]={}            -- XXX Usability over Space Performance
+  for y=0,127 do       -- Screen height
+   map[x][y]={}        -- XXX Usability over Space Performance
   end
  end
  return map
 end
-function Map:draw()
- -- FIXME use pico8 built-in map functionality
- for x=0,127 do
-  for y=0,127 do
-   if self[x]!=nil then
-    if self[x][y]!=nil then
-     self[x][y]:draw()
-    end
+function Map:load()
+ -- load bricks
+ for x=0,127,16 do                          -- Screen width by Brick width
+  for y=0,127,8 do                          -- Screen height by Brick height
+   if x==0 or x==112 or y==0 or y==120 then -- Screen Edges
+    self[x][y][0]=Brick:init(x,y)           -- Gray Bricks
    end
+   -- TODO other colors
   end
  end
 end
+function Map:draw()
+ for x=0,127 do                                        -- Screen width
+  for y=0,127 do                                       -- Screen height
+   if self[x][y][0]!=nil then self[x][y][0]:draw() end -- Screen Depth
+  end
+ end
+end
+-- TODO get objects in pixel space
 --[[
 PICO8 Functions
 --]]
@@ -95,6 +97,7 @@ function _init()
  import(Sprite.sheet)
  ball = Ball:init()
  map = Map:init()
+ map:load()
 end
 function _update()
  ball:update()
