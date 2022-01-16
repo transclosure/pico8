@@ -38,9 +38,6 @@ function Ball:update()
  if touchleft or touchright then self.dx*=-1 end
  if touchup or touchdown then self.dy*=-1 end
 end
-function Ball:draw()
- self.sprite:draw(self.x,self.y)
-end
 --[[
 Brick
 --]]
@@ -50,11 +47,7 @@ function Brick:init(x,y)
  local brick={}                   -- Brick Object
  setmetatable(brick,Brick)        -- Brick Instantiation
  brick.sprite=Sprite:init(24,2,1) -- Brick Sprite
- brick.x=x brick.y=y              -- Brick position
  return brick
-end
-function Brick:draw()
- self.sprite:draw(self.x,self.y)
 end
 --[[
 Map
@@ -63,30 +56,47 @@ Map={} Map.__index=Map
 function Map:init()
  local map={}          -- Map Object
  setmetatable(map,Map) -- Map Instantiation
+ map.static={}         -- Map Objects that don't update, just draw
  for x=0,127 do        -- Screen width
-  map[x]={}            -- XXX Usability over Space Performance
+  map.static[x]={}     -- XXX Usability over Space Performance
   for y=0,127 do       -- Screen height
-   map[x][y]={}        -- XXX Usability over Space Performance
+   map.static[x][y]={} -- XXX Usability over Space Performance
   end
  end
+ map.dynamic={}        -- Map Objects that do update, also draw
  return map
 end
 function Map:load()
- -- load bricks
+ -- load static (bricks)
  for x=0,127,16 do                          -- Screen width by Brick width
   for y=0,127,8 do                          -- Screen height by Brick height
    if x==0 or x==112 or y==0 or y==120 then -- Screen Edges
-    self[x][y][0]=Brick:init(x,y)           -- Gray Bricks
+    self.static[x][y][0]=Brick:init(x,y)    -- Gray Bricks
    end
    -- TODO other colors
   end
  end
+ -- load dynamic (ball)
+ add(self.dynamic,Ball:init())
+end
+function Map:update()
+ -- update dynamic (ball)
+ for obj in all(self.dynamic) do
+  obj:update()
+ end
 end
 function Map:draw()
- for x=0,127 do                                        -- Screen width
-  for y=0,127 do                                       -- Screen height
-   if self[x][y][0]!=nil then self[x][y][0]:draw() end -- Screen Depth
+ -- draw static (bricks)
+ for x=0,127 do                      -- Screen width
+  for y=0,127 do                     -- Screen height
+   if self.static[x][y][0]!=nil then -- Screen Depth
+    self.static[x][y][0].sprite:draw(x,y)
+   end
   end
+ end
+ -- draw dynamic (ball)
+ for obj in all(self.dynamic) do
+  obj.sprite:draw(obj.x,obj.y)
  end
 end
 -- TODO get objects in pixel space
@@ -95,16 +105,14 @@ PICO8 Functions
 --]]
 function _init()
  import(Sprite.sheet)
- ball = Ball:init()
  map = Map:init()
  map:load()
 end
 function _update()
- ball:update()
+ map:update()
 end
 function _draw()
  cls(0)
  map:draw()
- ball:draw()
  print(stat(7),3)
 end
