@@ -122,6 +122,7 @@ function Map:draw()
  end
 end
 function Map:collides(pos)
+ -- TODO pass back position object with # collisions on each of the 4 sides
  local collides={}
  for x=pos.left,pos.right do          -- hitbox width
   for y=pos.top,pos.bottom do         -- hitbox height
