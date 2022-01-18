@@ -46,11 +46,9 @@ end
 function Ball:update(map)
  self.x+=self.dx
  self.y+=self.dy
- local objs=map:collides(self.sprite:box(self.x,self.y))
- if count(objs)>0 then -- TODO update velocity correctly
-  self.dx=0
-  self.dy=0
- end
+ local collidebox=map:collides(self.sprite:box(self.x,self.y))
+ if collidebox.left!=0 or collidebox.right!=0 then self.dx*=-1 end
+ if collidebox.top!=0 or collidebox.right!=0 then self.dy*=-1 end
 end
 --[[
 Brick
@@ -121,17 +119,17 @@ function Map:draw()
   obj.sprite:draw(obj.x,obj.y)
  end
 end
-function Map:collides(box)
- -- TODO pass back box object with # collisions on each of the 4 sides
- local collides={}
- for x=box.left,box.right do          -- hitbox width
-  for y=box.top,box.bottom do         -- hitbox height
-   if self.collide[x][y][0]!=nil then -- hitbox depth
-    add(collides,self.collide[x][y][0])
-   end
-  end
+function Map:collides(hitbox)
+ local collidebox=Box:init(0,0,0,0)
+ for y=hitbox.top,hitbox.bottom do
+  if self.collide[hitbox.left][y][0]!=nil then collidebox.left+=1 end
+  if self.collide[hitbox.right][y][0]!=nil then collidebox.right+=1 end
  end
- return collides
+ for x=hitbox.left,hitbox.right do
+  if self.collide[x][hitbox.top][0]!=nil then collidebox.top+=1 end
+  if self.collide[x][hitbox.bottom][0]!=nil then collidebox.bottom+=1 end
+ end
+ return collidebox
 end
 --[[
 PICO8
