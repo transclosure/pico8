@@ -47,8 +47,8 @@ function Ball:update(map)
  self.x+=self.dx
  self.y+=self.dy
  local collidebox=map:collides(self.sprite:box(self.x,self.y))
- if collidebox.left!=0 or collidebox.right!=0 then self.dx*=-1 end
- if collidebox.top!=0 or collidebox.right!=0 then self.dy*=-1 end
+ if collidebox.left>1 or collidebox.right>1 then self.dx*=-1 end
+ if collidebox.top>1 or collidebox.bottom>1 then self.dy*=-1 end
 end
 --[[
 Brick
