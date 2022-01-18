@@ -32,6 +32,16 @@ function Sprite:draw(x,y)
  spr(self.s, x, y, self.w, self.h)
 end
 --[[
+Brick
+--]]
+Brick={} Brick.__index=Brick
+function Brick:init(x,y)
+ local brick={}                   -- Brick Object
+ setmetatable(brick,Brick)        -- Brick Instantiation
+ brick.sprite=Sprite:init(24,2,1) -- Brick Sprite
+ return brick
+end
+--[[
 Ball
 --]]
 Ball={} Ball.__index=Ball
@@ -43,107 +53,72 @@ function Ball:init()
  ball.dx=1 ball.dy=1                                   -- Ball Physics
  return ball
 end
-function Ball:update(map)
+function Ball:update()
  self.x+=self.dx
  self.y+=self.dy
- local collidebox=map:collides(self.sprite:box(self.x,self.y))
+ local collidebox=_collide(self)
  if collidebox.left>1 or collidebox.right>1 then self.dx*=-1 end
  if collidebox.top>1 or collidebox.bottom>1 then self.dy*=-1 end
-end
---[[
-Brick
---]]
-Brick={} Brick.__index=Brick
-function Brick:init(x,y)
- local brick={}                   -- Brick Object
- setmetatable(brick,Brick)        -- Brick Instantiation
- brick.sprite=Sprite:init(24,2,1) -- Brick Sprite
- return brick
-end
---[[
-Map
---]]
-Map={} Map.__index=Map
-function Map:init()
- local map={}           -- Map Object
- setmetatable(map,Map)  -- Map Instantiation
- map.dynamic={}         -- Map Objects that do update, also draw
- map.static={}          -- Map Objects that don't update, just draw
- map.collide={}         -- Map Objects that don't update, but affect updates
- for x=0,127 do         -- Screen width
-  map.static[x]={}      -- XXX Usability over Space Performance
-  map.collide[x]={}     -- XXX Usability over Space Performance
-  for y=0,127 do        -- Screen height
-   map.static[x][y]={}  -- XXX Usability over Space Performance
-   map.collide[x][y]={} -- XXX Usability over Space Performance
-  end
- end
- return map
-end
-function Map:load()
- -- load dynamic (ball)
- add(self.dynamic,Ball:init())
- -- load static/collide (bricks)
- for x=0,127,16 do                          -- Screen width by Brick width
-  for y=0,127,8 do                          -- Screen height by Brick height
-   if x==0 or x==112 or y==0 or y==120 then -- Screen Edges
-    local brick=Brick:init(x,y)
-    local bbox=brick.sprite:box(x,y)
-    self.static[x][y][0]=brick              -- Gray Bricks to draw
-    for xs=bbox.left,bbox.right do
-     for ys=bbox.top,bbox.bottom do
-      self.collide[xs][ys][0]=brick         -- Gray Bricks hitboxes
-     end
-    end
-   end
-  end
- end
-end
-function Map:update()
- -- update dynamic (ball)
- for obj in all(self.dynamic) do
-  obj:update(self)
- end
-end
-function Map:draw()
- -- draw static (bricks)
- for x=0,127 do                      -- Screen width
-  for y=0,127 do                     -- Screen height
-   if self.static[x][y][0]!=nil then -- Screen depth
-    self.static[x][y][0].sprite:draw(x,y)
-   end
-  end
- end
- -- draw dynamic (ball)
- for obj in all(self.dynamic) do
-  obj.sprite:draw(obj.x,obj.y)
- end
-end
-function Map:collides(hitbox)
- local collidebox=Box:init(0,0,0,0)
- for y=hitbox.top,hitbox.bottom do
-  if self.collide[hitbox.left][y][0]!=nil then collidebox.left+=1 end
-  if self.collide[hitbox.right][y][0]!=nil then collidebox.right+=1 end
- end
- for x=hitbox.left,hitbox.right do
-  if self.collide[x][hitbox.top][0]!=nil then collidebox.top+=1 end
-  if self.collide[x][hitbox.bottom][0]!=nil then collidebox.bottom+=1 end
- end
- return collidebox
 end
 --[[
 PICO8
 --]]
 function _init()
  import(Sprite.sheet)
- map = Map:init()
- map:load()
+ -- init game
+ DRAW={}          -- Map Objects that don't update, just draw
+ COLLIDE={}         -- Map Objects that don't update, but affect updates
+ for x=0,127 do         -- Screen width
+  DRAW[x]={}      -- XXX Usability over Space Performance
+  COLLIDE[x]={}     -- XXX Usability over Space Performance
+  for y=0,127 do        -- Screen height
+   DRAW[x][y]={}  -- XXX Usability over Space Performance
+   COLLIDE[x][y]={} -- XXX Usability over Space Performance
+  end
+ end
+ -- load game
+ for x=0,127,16 do                          -- Screen width by Brick width
+  for y=0,127,8 do                          -- Screen height by Brick height
+   if x==0 or x==112 or y==0 or y==120 then -- Screen Edges
+    local brick=Brick:init(x,y)
+    local bbox=brick.sprite:box(x,y)
+    DRAW[x][y][0]=brick              -- Gray Bricks to draw
+    for xs=bbox.left,bbox.right do
+     for ys=bbox.top,bbox.bottom do
+      COLLIDE[xs][ys][0]=brick         -- Gray Bricks hitboxes
+     end
+    end
+   end
+  end
+ end
+ BALL=Ball:init()
 end
 function _update()
- map:update()
+ BALL:update()
 end
 function _draw()
  cls(0)
- map:draw()
+ -- draw static (bricks)
+ for x=0,127 do                      -- Screen width
+  for y=0,127 do                     -- Screen height
+   if DRAW[x][y][0]!=nil then -- Screen depth
+    DRAW[x][y][0].sprite:draw(x,y)
+   end
+  end
+ end
+ BALL.sprite:draw(BALL.x,BALL.y)
  print(stat(7),3)
+end
+function _collide(obj)
+ local hitbox=obj.sprite:box(obj.x,obj.y)
+ local collidebox=Box:init(0,0,0,0)
+ for y=hitbox.top,hitbox.bottom do
+  if COLLIDE[hitbox.left][y][0]!=nil then collidebox.left+=1 end
+  if COLLIDE[hitbox.right][y][0]!=nil then collidebox.right+=1 end
+ end
+ for x=hitbox.left,hitbox.right do
+  if COLLIDE[x][hitbox.top][0]!=nil then collidebox.top+=1 end
+  if COLLIDE[x][hitbox.bottom][0]!=nil then collidebox.bottom+=1 end
+ end
+ return collidebox
 end
