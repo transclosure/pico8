@@ -4,91 +4,82 @@ __lua__
 --[[
 Constants
 --]]
-FPS=7
-CELL=8 MIN=0 MAX=128 FGZ=0
+ZERO=0 ONE=1 TWO=2 THREE=3 FOUR=4 FIVE=5 SIX=6 SEVEN=7 EIGHT=8
+NINE=9 TEN=10 ELEVEN=11 TWELVE=12 THIRTEEN=13 FOURTEEN=14 FIFTEEN=15 SIXTEEN=16
+CELL=8 MIN=0 MAX=128 DEBUG=true
+MEM=0 TCPU=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TFPS=8
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 --[[
+Box
+--]]
+Box={l=ZERO,r=ZERO,t=ZERO,b=ZERO} Box.__index=Box
+function Box:init(box) return setmetatable(box or {},Box) end
+function Box:randpos()
+ return {x=self.l+rand(self.r-self.l),y=self.t+rand(self.b-self.t)}
+end
+--[[
 Sprite
 --]]
-Sprite={} Sprite.__index=Sprite
-function Sprite:init(s,w,h)
- local sprite={}                   -- Sprite Object
- setmetatable(sprite,Sprite)       -- Sprite Instantiation
- sprite.s=s sprite.w=w sprite.h=h  -- Sprite dimensions in sheet
+Sprite={s=ZERO,w=ONE,h=ONE} Sprite.__index=Sprite
+function Sprite:init(s)
+ local sprite = s or {}
+ setmetatable(sprite,Sprite)
+ sprite.dimensions=sprite:box(ZERO,ZERO)
  return sprite
 end
-function Sprite:draw(x,y)
- spr(self.s, x, y, self.w, self.h)
-end
-Box={} Box.__index=Box
-function Box:init(l,r,t,b)
- local box={}                -- Box Object
- setmetatable(box,Box)       -- Box Instantiation
- box.left=l box.right=r      -- Box x space
- box.top=t box.bottom=b      -- Box y space
- return box
-end
+function Sprite:draw(x,y) spr(self.s, x, y, self.w, self.h) end
 function Sprite:box(x,y)
- -- DEBUG pico8 gives floats not ints on update calls
- return Box:init(flr(x),flr(x+self.w*CELL),flr(y),flr(y+self.h*CELL))
+ return Box:init({l=x,r=x+self.w*CELL,t=y,b=y+self.h*CELL})
 end
 --[[
 Brick
 --]]
-Brick={} Brick.__index=Brick
-function Brick:init(x,y)
- local brick={}                   -- Brick Object
- setmetatable(brick,Brick)        -- Brick Instantiation
- brick.sprite=Sprite:init(24,2,1) -- Brick Sprite
- return brick
-end
+Brick={sprite=Sprite:init({s=TEN-ONE,w=TWO,h=ONE})} Brick.__index=Brick
+function Brick:init() return setmetatable({},Brick) end
 --[[
 Ball
 --]]
-Ball={} Ball.__index=Ball
-function Ball:init()
- local ball={}                   -- Ball Object
- setmetatable(ball,Ball)         -- Ball Instantiation
- ball.sprite=Sprite:init(13,1,1) -- Ball Sprite
- ball.x=MAX/2 ball.y=MAX/2       -- FIXME Ball random start
- ball.dx=1 ball.dy=1             -- Ball Physics
- return ball
-end
+Ball={
+ sprite=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),
+ x=MAX/TWO,y=MAX/TWO,dx=ONE,dy=ONE
+} Ball.__index=Ball
+function Ball:init() return setmetatable({},Ball) end
 function Ball:update()
- self.x+=self.dx
- self.y+=self.dy
+ self.x+=self.dx self.y+=self.dy
  local collidebox=_collide(self)
- if collidebox.left>1 or collidebox.right>1 then self.dx*=-1 end
- if collidebox.top>1 or collidebox.bottom>1 then self.dy*=-1 end
+ if collidebox.l>ONE or collidebox.r>ONE then self.dx*=-ONE end
+ if collidebox.t>ONE or collidebox.b>ONE then self.dy*=-ONE end
 end
 --[[
-PICO8
+PICO8 Base Functions
 --]]
 function _init()
  import('spritesheet.png')
- DRAW={}            -- Map Objects that don't update, just draw
- COLLIDE={}         -- Map Objects that don't update, but affect updates
- for x=MIN,MAX do   -- Screen width
-  DRAW[x]={}        -- XXX Usability over Space Performance
-  COLLIDE[x]={}     -- XXX Usability over Space Performance
-  for y=MIN,MAX do  -- Screen height
-   DRAW[x][y]={}    -- XXX Usability over Space Performance
-   COLLIDE[x][y]={} -- XXX Usability over Space Performance
+ DRAW={}
+ COLLIDE={}
+ -- XXX Accessibility over Space Performance
+ for x=MIN,MAX do
+  DRAW[x]={}
+  COLLIDE[x]={}
+  for y=MIN,MAX do
+   DRAW[x][y]={}
+   COLLIDE[x][y]={}
   end
  end
- -- FIXME abstract brick with predefined sprite dimensions
- for x=MIN,MAX,16 do                          -- Screen width by Brick width
-  for y=MIN,MAX,8 do                          -- Screen height by Brick height
-   local offscreen=(x==MAX or y==MAX)
-   local onedge=(x==MIN or x==MAX-16 or y==MIN or y==MAX-8)
-   if (not offscreen) and onedge then -- Screen Edges
+ local brickw=Brick.sprite.dimensions.r
+ local brickh=Brick.sprite.dimensions.b
+ for x=MIN,MAX,brickw do
+  for y=MIN,MAX,brickh do
+   local onscreen=(x>=MIN and x<MAX and y>=MIN and y<MAX)
+   local onedge=(x==MIN or x==MAX-brickw or y==MIN or y==MAX-brickh)
+   if onscreen and onedge then
     local brick=Brick:init(x,y)
-    local bbox=brick.sprite:box(x,y)
-    DRAW[x][y][FGZ]=brick              -- Gray Bricks to draw
-    for xs=bbox.left,bbox.right do
-     for ys=bbox.top,bbox.bottom do
-      COLLIDE[xs][ys][FGZ]=brick         -- Gray Bricks hitboxes
+    local hitbox=brick.sprite:box(x,y)
+    DRAW[x][y][ZERO]=brick
+    for xs=hitbox.l,hitbox.r do
+     for ys=hitbox.t,hitbox.b do
+      COLLIDE[xs][ys][ZERO]=brick
      end
     end
    end
@@ -101,27 +92,28 @@ function _update()
 end
 function _draw()
  cls(BLACK)
- -- draw static (bricks)
- for x=MIN,MAX do                      -- Screen width
-  for y=MIN,MAX do                     -- Screen height
-   if DRAW[x][y][FGZ] then -- Screen depth
-    DRAW[x][y][FGZ].sprite:draw(x,y)
-   end
+ -- XXX Accessibility over Time Performance
+ for x=MIN,MAX do
+  for y=MIN,MAX do
+   if DRAW[x][y][ZERO] then DRAW[x][y][ZERO].sprite:draw(x,y) end
   end
  end
  BALL.sprite:draw(BALL.x,BALL.y)
- print(stat(FPS),YELLOW)
+ if DEBUG then print(stat(MEM).."\n"..stat(TCPU).."\n"..stat(TFPS),PINK) end
 end
+--[[
+PICO8 Extended Functions
+--]]
 function _collide(obj)
  local hitbox=obj.sprite:box(obj.x,obj.y)
- local collidebox=Box:init(0,0,0,0) -- FIXME Box default arguments
- for y=hitbox.top,hitbox.bottom do
-  if COLLIDE[hitbox.left][y][FGZ] then collidebox.left+=1 end
-  if COLLIDE[hitbox.right][y][FGZ] then collidebox.right+=1 end
+ local collidebox=Box:init()
+ for y=hitbox.t,hitbox.b do
+  if COLLIDE[hitbox.l][y][ZERO] then collidebox.l+=ONE end
+  if COLLIDE[hitbox.r][y][ZERO] then collidebox.r+=ONE end
  end
- for x=hitbox.left,hitbox.right do
-  if COLLIDE[x][hitbox.top][FGZ] then collidebox.top+=1 end
-  if COLLIDE[x][hitbox.bottom][FGZ] then collidebox.bottom+=1 end
+ for x=hitbox.l,hitbox.r do
+  if COLLIDE[x][hitbox.t][ZERO] then collidebox.t+=ONE end
+  if COLLIDE[x][hitbox.b][ZERO] then collidebox.b+=ONE end
  end
  return collidebox
 end
