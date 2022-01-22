@@ -6,8 +6,7 @@ Constants
 --]]
 ZERO=0 ONE=1 TWO=2 THREE=3 FOUR=4 FIVE=5 SIX=6 SEVEN=7 EIGHT=8
 NINE=9 TEN=10 ELEVEN=11 TWELVE=12 THIRTEEN=13 FOURTEEN=14 FIFTEEN=15 SIXTEEN=16
-CELL=8 MIN=0 MAX=128 DEBUG=true
-MEM=0 TCPU=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TFPS=8
+CELL=8 MIN=0 MAX=128
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 --[[
@@ -16,7 +15,7 @@ Box
 Box={l=ZERO,r=ZERO,t=ZERO,b=ZERO} Box.__index=Box
 function Box:init(box) return setmetatable(box or {},Box) end
 function Box:randpos()
- return {x=self.l+rand(self.r-self.l),y=self.t+rand(self.b-self.t)}
+ return {x=flr(self.l+rnd(self.r-self.l)),y=flr(self.t+rnd(self.b-self.t))}
 end
 --[[
 Sprite
@@ -40,11 +39,17 @@ function Brick:init() return setmetatable({},Brick) end
 --[[
 Ball
 --]]
-Ball={
- sprite=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),
- x=MAX/TWO,y=MAX/TWO,dx=ONE,dy=ONE
-} Ball.__index=Ball
-function Ball:init() return setmetatable({},Ball) end
+Ball={sprite=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE})} Ball.__index=Ball
+function Ball:init()
+ local ball={}
+ setmetatable(ball,Ball)
+ local play={l=MAX*ONE/FIVE,r=MAX*FOUR/FIVE,t=MAX*ONE/FIVE,b=MAX*THREE/FIVE}
+ local playbox=Box:init(play)
+ local playpos=playbox:randpos()
+ ball.x=playpos.x ball.y=playpos.y
+ ball.dx=ONE ball.dy=ONE
+ return ball
+end
 function Ball:update()
  self.x+=self.dx self.y+=self.dy
  local collidebox=_collide(self)
@@ -99,7 +104,6 @@ function _draw()
   end
  end
  BALL.sprite:draw(BALL.x,BALL.y)
- if DEBUG then print(stat(MEM).."\n"..stat(TCPU).."\n"..stat(TFPS),PINK) end
 end
 --[[
 PICO8 Extended Functions
