@@ -11,6 +11,7 @@ DEBUG=true MEM=0 TCPU=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TFPS=8
 CURSOR_X=0x5f26 CURSOR_Y=0x5f27
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
+BACKGROUND=BLACK COLLISION=WHITE
 --[[
 Dimensional Utilities
 --]]
@@ -42,11 +43,14 @@ end
 --[[
 Breakout Game
 --]]
-Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE}),pos=Pos:init()}
-Brick.__index=Brick
+Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE})} Brick.__index=Brick
 function Brick:init(b) return setmetatable(b or {},Brick) end
-function Brick:draw()
- spr(self.spr.s, self.pos.x, self.pos.y, self.spr.w, self.spr.h)
+function Brick:draw(poss)
+ for pos in all(poss) do
+  map(flr(pos.x/CELL),flr(pos.y/CELL),
+      flr(pos.x/CELL)*CELL,flr(pos.y/CELL)*CELL,
+      Brick.spr.w,Brick.spr.h)
+ end
 end
 Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),vel=Pos:init({x=ONE,y=ONE})}
 Ball.__index=Ball
@@ -57,40 +61,36 @@ function Ball:init()
   left=MAX*ONE/FIVE,right=MAX*FOUR/FIVE,
   top=MAX*ONE/FIVE,bottom=MAX*THREE/FIVE}):randpos()
  ball.posprev=Pos:init({x=ball.pos.x,y=ball.pos.y})
+ ball.collisions={}
+ ball.bounced=false
  return ball
 end
 function Ball:undraw()
  local x=self.posprev.x while x<self.posprev.x+self.spr.dim.x do
   local y=self.posprev.y while y<self.posprev.y+self.spr.dim.y do
-   if pget(x,y)!=GREEN then pset(x,y,BACKGROUND)
-   else
-    -- FIXME redraw pico8 map cells
-   end
+   if pget(x,y)!=COLLIDE then pset(x,y,BACKGROUND) end
    y+=ONE
   end
   x+=ONE
  end
 end
 function Ball:redraw()
- local collisions={}
  local sx=self.spr.spos.x local px=self.pos.x
  local dx=ZERO while dx<self.spr.dim.x do
   local sy=self.spr.spos.y local py=self.pos.y
   local dy=ZERO while dy<self.spr.dim.y do
    if pget(px+dx,py+dy)!=BACKGROUND then
-    pset(px+dx,py+dy,GREEN)
-    add(collisions,Pos:init({x=px+dx,y=py+dy}))
+    pset(px+dx,py+dy,COLLISION)
+    add(self.collisions,Pos:init({x=px+dx,y=py+dy}))
    else pset(px+dx,py+dy,sget(sx+dx,sy+dy)) end
    dy+=ONE
   end
   dx+=ONE
  end
- if count(collisions)!=ZERO then self:collide(collisions) end
- self.posprev.x=self.pos.x self.posprev.y=self.pos.y
 end
-function Ball:collide(poss)
+function Ball:collide()
  local collidebox=Box:init()
- for pos in all(poss) do
+ for pos in all(self.collisions) do
   if pos.x==self.pos.x                    then collidebox.left+=ONE end
   if pos.x==self.pos.x+self.spr.dim.x-ONE then collidebox.right+=ONE end
   if pos.y==self.pos.y                    then collidebox.top+=ONE end
@@ -100,43 +100,39 @@ function Ball:collide(poss)
  if collidebox.top>ONE or collidebox.bottom>ONE then BALL.vel.y*=-ONE end
 end
 --[[
-FIXME replace with pico8 map prims
---]]
-Map={} Map.__index=Map
-function Map:init() return setmetatable({},Map) end
-function Map:put(x,y,z,v)
- if not self[x] then self[x]={} end
- if not self[x][y] then self[x][y]={} end
- self[x][y][z]=v
-end
-function Map:get(x,y,z)
- if self[x] and self[x][y] then return self[x][y][z]
- else return nil
- end
-end
---[[
 PICO8 Base Functionality
 --]]
 function _init()
  import('spritesheet.png')
- BACKGROUND=BLACK
- BALL=Ball:init()
  cls(BACKGROUND)
- local brickw=Brick.spr.dim.x local brickh=Brick.spr.dim.y
- local x=MIN while x<MAX do
-  local y=MIN while y<MAX do
-   if x==MIN or x==MAX-brickw or y==MIN or y==MAX-brickh then
-    Brick:init({pos=Pos:init({x=x,y=y})}):draw()
+ BALL=Ball:init()
+ local bw=Brick.spr.dim.x local bh=Brick.spr.dim.y
+ local x=MIN/CELL while x<MAX/CELL do
+  local y=MIN/CELL while y<MAX/CELL do
+   if x==MIN/CELL or x==(MAX-bw)/CELL or y==MIN/CELL or y==(MAX-bh)/CELL then
+    local bi=0 while bi<bw/CELL do
+     mset(x+bi,y,Brick.spr.s+bi)
+     bi+=ONE
+    end
+    Brick:draw({Pos:init({x=x*CELL,y=y*CELL})})
    end
-   y+=brickh
+   y+=bh/CELL
   end
-  x+=brickw
+  x+=bw/CELL
  end
 end
-function _update60() BALL.pos.x+=BALL.vel.x BALL.pos.y+=BALL.vel.y end
+function _update60()
+ if (not BALL.bounced) then
+  BALL:collide()
+  BALL.pos.x+=BALL.vel.x BALL.pos.y+=BALL.vel.y
+  BALL.bounced=true
+ end
+end
 function _draw()
- BALL:undraw()
+ BALL:undraw() Brick:draw(BALL.collisions)
+ BALL.collisions={}
  BALL:redraw()
+ BALL.bounced=false BALL.posprev.x=BALL.pos.x BALL.posprev.y=BALL.pos.y
  if DEBUG then
   print(stat(MEM).."..."..stat(TCPU).."..."..stat(FPS).."/"..stat(TFPS),MIN,MIN,PINK)
   rectfill(MIN,MIN,peek(CURSOR_X)+THREE*MAX/FOUR,peek(CURSOR_Y),BACKGROUND)
