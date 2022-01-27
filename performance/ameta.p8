@@ -12,60 +12,95 @@ CURSOR_X=0x5f26 CURSOR_Y=0x5f27
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 --[[
-Box
+Dimensional Utilities
 --]]
-Box={l=ZERO,r=ZERO,t=ZERO,b=ZERO} Box.__index=Box
-function Box:init(box) return setmetatable(box or {},Box) end
+Pos={x=ZERO,y=ZERO} Pos.__index=Pos
+function Pos:init(p) return setmetatable(p or {},Pos) end
+Box={left=ZERO,right=ZERO,top=ZERO,bottom=ZERO} Box.__index=Box
+function Box:init(b) return setmetatable(b or {},Box) end
 function Box:randpos()
- return {x=flr(self.l+rnd(self.r-self.l)),y=flr(self.t+rnd(self.b-self.t))}
+ return Pos:init({
+  x=flr(self.left+rnd(self.right-self.left)),
+  y=flr(self.top+rnd(self.bottom-self.top))})
 end
 --[[
-Sprite
+Sprites and Hitboxes
 --]]
-Sprite={s=ZERO,w=ONE,h=ONE} Sprite.__index=Sprite
+Sprite={s=ZERO,w=ONE,h=ONE,dim=Pos:init()} Sprite.__index=Sprite
 function Sprite:init(s)
  local sprite = s or {}
  setmetatable(sprite,Sprite)
- sprite.dimensions=sprite:box(ZERO,ZERO)
+ sprite.spos=Pos:init({x=(sprite.s%SIXTEEN)*CELL,y=flr(sprite.s/SIXTEEN)*CELL})
+ sprite.dim=Pos:init({x=sprite.w*CELL,y=sprite.h*CELL})
  return sprite
 end
-function Sprite:draw(x,y) spr(self.s, x, y, self.w, self.h) end
-function Sprite:box(x,y)
- return Box:init({l=x,r=x+self.w*CELL,t=y,b=y+self.h*CELL})
+function Sprite:hitbox(pos)
+ return Box:init({
+  left=pos.x,right=pos.x+self.spr.dim.x,
+  top=pos.y,bottom=pos.y+self.spr.dim.y})
 end
 --[[
-Brick
+Breakout Game
 --]]
-Brick={sprite=Sprite:init({s=TEN-ONE,w=TWO,h=ONE})} Brick.__index=Brick
-function Brick:init() return setmetatable({},Brick) end
---[[
-Ball
---]]
-Ball={sprite=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE})} Ball.__index=Ball
+Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE}),pos=Pos:init()}
+Brick.__index=Brick
+function Brick:init(b) return setmetatable(b or {},Brick) end
+function Brick:draw()
+ spr(self.spr.s, self.pos.x, self.pos.y, self.spr.w, self.spr.h)
+end
+Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),vel=Pos:init({x=ONE,y=ONE})}
+Ball.__index=Ball
 function Ball:init()
  local ball={}
  setmetatable(ball,Ball)
- local play={l=MAX*ONE/FIVE,r=MAX*FOUR/FIVE,t=MAX*ONE/FIVE,b=MAX*THREE/FIVE}
- local playbox=Box:init(play)
- local playpos=playbox:randpos()
- ball.x=playpos.x ball.y=playpos.y
- ball.xprev=ball.x ball.yprev=ball.y
- ball.dx=ONE ball.dy=ONE
+ ball.pos=Box:init({
+  left=MAX*ONE/FIVE,right=MAX*FOUR/FIVE,
+  top=MAX*ONE/FIVE,bottom=MAX*THREE/FIVE}):randpos()
+ ball.posprev=Pos:init({x=ball.pos.x,y=ball.pos.y})
  return ball
 end
-function Ball:collide(collisions)
- local collidebox=Box:init()
- for c in all(collisions) do
-  if c.x==self.x then collidebox.l+=ONE end
-  if c.x==self.x+self.sprite.dimensions.r-ONE then collidebox.r+=ONE end
-  if c.y==self.y then collidebox.t+=ONE end
-  if c.y==self.y+self.sprite.dimensions.b-ONE then collidebox.b+=ONE end
+function Ball:undraw()
+ local x=self.posprev.x while x<self.posprev.x+self.spr.dim.x do
+  local y=self.posprev.y while y<self.posprev.y+self.spr.dim.y do
+   if pget(x,y)!=GREEN then pset(x,y,BACKGROUND)
+   else
+    -- FIXME redraw pico8 map cells
+   end
+   y+=ONE
+  end
+  x+=ONE
  end
- if collidebox.l>ONE or collidebox.r>ONE then BALL.dx*=-ONE end
- if collidebox.t>ONE or collidebox.b>ONE then BALL.dy*=-ONE end
+end
+function Ball:redraw()
+ local collisions={}
+ local sx=self.spr.spos.x local px=self.pos.x
+ local dx=ZERO while dx<self.spr.dim.x do
+  local sy=self.spr.spos.y local py=self.pos.y
+  local dy=ZERO while dy<self.spr.dim.y do
+   if pget(px+dx,py+dy)!=BACKGROUND then
+    pset(px+dx,py+dy,GREEN)
+    add(collisions,Pos:init({x=px+dx,y=py+dy}))
+   else pset(px+dx,py+dy,sget(sx+dx,sy+dy)) end
+   dy+=ONE
+  end
+  dx+=ONE
+ end
+ if count(collisions)!=ZERO then self:collide(collisions) end
+ self.posprev.x=self.pos.x self.posprev.y=self.pos.y
+end
+function Ball:collide(poss)
+ local collidebox=Box:init()
+ for pos in all(poss) do
+  if pos.x==self.pos.x                    then collidebox.left+=ONE end
+  if pos.x==self.pos.x+self.spr.dim.x-ONE then collidebox.right+=ONE end
+  if pos.y==self.pos.y                    then collidebox.top+=ONE end
+  if pos.y==self.pos.y+self.spr.dim.y-ONE then collidebox.bottom+=ONE end
+ end
+ if collidebox.left>ONE or collidebox.right>ONE then BALL.vel.x*=-ONE end
+ if collidebox.top>ONE or collidebox.bottom>ONE then BALL.vel.y*=-ONE end
 end
 --[[
-Map
+FIXME replace with pico8 map prims
 --]]
 Map={} Map.__index=Map
 function Map:init() return setmetatable({},Map) end
@@ -80,64 +115,28 @@ function Map:get(x,y,z)
  end
 end
 --[[
-PICO8 Base Functions
+PICO8 Base Functionality
 --]]
 function _init()
  import('spritesheet.png')
  BACKGROUND=BLACK
- --DRAW=Map:init()
  BALL=Ball:init()
  cls(BACKGROUND)
- -- FIXME while loops would be nicer looking, replace with pico8 map prims
- local brickw=Brick.sprite.dimensions.r
- local brickh=Brick.sprite.dimensions.b
- for x=MIN,MAX,brickw do
-  for y=MIN,MAX,brickh do
-   local onscreen=(x>=MIN and x<MAX and y>=MIN and y<MAX)
-   local onedge=(x==MIN or x==MAX-brickw or y==MIN or y==MAX-brickh)
-   if onscreen and onedge then
-    local brick=Brick:init(x,y)
-    local hitbox=brick.sprite:box(x,y)
-    --DRAW:put(x,y,ZERO,brick)
-    brick.sprite:draw(x,y)
+ local brickw=Brick.spr.dim.x local brickh=Brick.spr.dim.y
+ local x=MIN while x<MAX do
+  local y=MIN while y<MAX do
+   if x==MIN or x==MAX-brickw or y==MIN or y==MAX-brickh then
+    Brick:init({pos=Pos:init({x=x,y=y})}):draw()
    end
+   y+=brickh
   end
+  x+=brickw
  end
 end
-function _update60() BALL.x+=BALL.dx BALL.y+=BALL.dy end
+function _update60() BALL.pos.x+=BALL.vel.x BALL.pos.y+=BALL.vel.y end
 function _draw()
- -- FIXME clean up this experiement
- -- FIXME brick handle redraws at collisions
- local x=BALL.xprev
- while x<BALL.xprev+BALL.sprite.dimensions.r do
-  local y=BALL.yprev
-  while y<BALL.yprev+BALL.sprite.dimensions.b do
-   if pget(x,y)!=GREEN then pset(x,y,BACKGROUND) end
-   y+=ONE
-  end
-  x+=ONE
- end
- --rectfill(x0,y0,x1,y1,BLACK)
- local collisions={}
- local sx=(SIXTEEN-ONE)*CELL
- local px=BALL.x
- local dx=ZERO
- while dx<CELL do
-  local sy=ZERO*CELL
-  local py=BALL.y
-  local dy=ZERO
-  while dy<CELL do
-   if pget(px+dx,py+dy)!=BACKGROUND then
-    pset(px+dx,py+dy,GREEN)
-    add(collisions,{x=px+dx,y=py+dy})
-   else pset(px+dx,py+dy,sget(sx+dx,sy+dy)) end
-   dy+=ONE
-  end
-  dx+=ONE
- end
- if count(collisions)!=ZERO then BALL:collide(collisions) end
- --BALL.sprite:draw(BALL.x,BALL.y)
- BALL.xprev=BALL.x BALL.yprev=BALL.y
+ BALL:undraw()
+ BALL:redraw()
  if DEBUG then
   print(stat(MEM).."..."..stat(TCPU).."..."..stat(FPS).."/"..stat(TFPS),MIN,MIN,PINK)
   rectfill(MIN,MIN,peek(CURSOR_X)+THREE*MAX/FOUR,peek(CURSOR_Y),BACKGROUND)
