@@ -122,17 +122,14 @@ function _init()
  end
 end
 function _update60()
- if (not BALL.bounced) then
-  BALL:collide()
-  BALL.pos.x+=BALL.vel.x BALL.pos.y+=BALL.vel.y
-  BALL.bounced=true
- end
-end
-function _draw()
- BALL:undraw() Brick:draw(BALL.collisions)
+ BALL:undraw() BALL.posprev.x=BALL.pos.x BALL.posprev.y=BALL.pos.y
+ Brick:draw(BALL.collisions)
  BALL.collisions={}
  BALL:redraw()
- BALL.bounced=false BALL.posprev.x=BALL.pos.x BALL.posprev.y=BALL.pos.y
+ BALL:collide()
+ BALL.pos.x+=BALL.vel.x BALL.pos.y+=BALL.vel.y
+end
+function _draw()
  if DEBUG then
   print(stat(MEM).."..."..stat(TCPU).."..."..stat(FPS).."/"..stat(TFPS),MIN,MIN,PINK)
   rectfill(MIN,MIN,peek(CURSOR_X)+THREE*MAX/FOUR,peek(CURSOR_Y),BACKGROUND)
