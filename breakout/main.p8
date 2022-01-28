@@ -11,10 +11,40 @@ DEBUG=true MEM=0 TC=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TF=8
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 --[[
+Data Structures
+--]]
+Map={} Map.__index=Map
+function Map:init() return setmetatable({},Map) end
+function Map:put(x,y,v)
+ if not self[x] then self[x]={} end
+ self[x][y]=v
+end
+function Map:get(x,y)
+ if self[x] then return self[x][y]
+ else return nil end
+end
+Set={} Set.__index=Set
+function Set:init() return setmetatable({map=Map.init()},Set) end
+function Set:add(pos) self.map:put(pos.x,pos.y,true) end
+function Set:all()
+ local set={}
+ for x,ys in pairs(self.map) do
+  for y,v in pairs(ys) do
+   add(set,Pos:init({x=x,y=y}))
+  end
+ end
+ return set
+end
+--[[
 Dimensional Utilities
 --]]
 Pos={x=ZERO,y=ZERO} Pos.__index=Pos
-function Pos:init(p) return setmetatable(p or {},Pos) end
+function Pos:init(p)
+ local pos = p or {}
+ setmetatable(pos,Pos)
+ pos.x=flr(pos.x) pos.y=flr(pos.y)
+ return pos
+end
 Box={left=ZERO,right=ZERO,top=ZERO,bottom=ZERO} Box.__index=Box
 function Box:init(b) return setmetatable(b or {},Box) end
 function Box:randpos()
@@ -40,14 +70,45 @@ end
 --[[
 Breakout Game
 --]]
-Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE})} Brick.__index=Brick
-function Brick:init(pos)
+Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE}),inplay=ONE}
+Brick.__index=Brick
+function Brick:init(pos,inplay)
  local brick = b or {}
  setmetatable(brick,Brick)
+ if inplay then
+  brick.spr=Sprite:init({s=Brick.inplay,w=Brick.spr.w,h=Brick.spr.h})
+ end
  mset(pos.x/CELL,pos.y/CELL,brick.spr.s)
  mset((pos.x+CELL)/CELL,pos.y/CELL,brick.spr.s+CELL/CELL)
 end
-function Brick:draw() map(MIN/CELL,MIN/CELL,MIN,MIN,MAX/CELL,MAX/CELL) end
+function Brick:update(cells)
+ -- XXX cells -> bricks... need object mapping framework
+ bricks=Set:init()
+ for cell in all(cells) do
+  cell.x=flr(cell.x/Brick.spr.w)*Brick.spr.w
+  bricks:add(Pos:init({x=cell.x,y=cell.y}))
+ end
+ -- XXX with object mapping, updating brick states should be cleaner than this
+ for brick in all(bricks:all()) do
+  local bricks=mget(brick.x,brick.y)
+  if bricks!=Brick.spr.s then
+   newbricks=mget(brick.x,brick.y)+TWO
+   if newbricks==Brick.spr.s then
+    mset(brick.x,brick.y,EMPTY)
+    mset(brick.x+ONE,brick.y,EMPTY)
+    local undraw=Brick.spr:box(Pos:init({x=brick.x*CELL,y=brick.y*CELL}),ZERO)
+    rectfill(undraw.left,undraw.top,undraw.right,undraw.bottom,BACKGROUND)
+   else
+    mset(brick.x,brick.y,mget(brick.x,brick.y)+TWO)
+    mset(brick.x+ONE,brick.y,mget(brick.x+ONE,brick.y)+TWO)
+    map(brick.x,brick.y,brick.x*CELL,brick.y*CELL,Brick.spr.w,Brick.spr.h)
+   end
+  end
+ end
+end
+function Brick:draw()
+ map(MIN/CELL,MIN/CELL,MIN,MIN,MAX/CELL,MAX/CELL)
+end
 Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),vel=Pos:init({x=ONE,y=ONE})}
 Ball.__index=Ball
 function Ball:init()
@@ -55,7 +116,7 @@ function Ball:init()
  setmetatable(ball,Ball)
  ball.pos=Box:init({
   left=MAX*ONE/FIVE,right=MAX*FOUR/FIVE,
-  top=MAX*ONE/FIVE,bottom=MAX*THREE/FIVE}):randpos()
+  top=MAX*THREE/SIX,bottom=MAX*FOUR/SIX}):randpos()
  ball.posprev=Pos:init({x=ball.pos.x,y=ball.pos.y})
  return ball
 end
@@ -82,7 +143,11 @@ function _init()
  for x=MIN,MAX-bw,bw do
   for y=MIN,MAX-bh,bh do
    if x==MIN or x==MAX-bw or y==MIN or y==MAX-bh then
-    Brick:init(Pos:init({x=x,y=y}))
+    Brick:init(Pos:init({x=x,y=y}),false)
+   else
+    if y<MAX-bh*EIGHT then
+     Brick:init(Pos:init({x=x,y=y}),true)
+    end
    end
   end
  end
@@ -102,14 +167,34 @@ PICO8 Extended Functionality
 --]]
 function _collide(obj)
  local hitbox=obj.spr:box(obj.pos,ONE)
- local collide=Box:init()
+ local collidebox=Box:init()
+ -- XXX pixels->cells/CELL bleeding out of sprite... need object mapping
+ local collidecells=Set:init()
  for y=hitbox.top,hitbox.bottom do
-  if mget(hitbox.left/CELL,y/CELL)!=EMPTY then collide.left+=ONE end
-  if mget(hitbox.right/CELL,y/CELL)!=EMPTY then collide.right+=ONE end
+  local leftcell=Pos:init({x=hitbox.left/CELL,y=y/CELL})
+  if mget(leftcell.x,leftcell.y)!=EMPTY then
+   collidebox.left+=ONE
+   collidecells:add(leftcell)
+  end
+  local rightcell=Pos:init({x=hitbox.right/CELL,y=y/CELL})
+  if mget(rightcell.x,rightcell.y)!=EMPTY then
+   collidebox.right+=ONE
+   collidecells:add(rightcell)
+  end
  end
  for x=hitbox.left,hitbox.right do
-  if mget(x/CELL,hitbox.top/CELL)!=EMPTY then collide.top+=ONE end
-  if mget(x/CELL,hitbox.bottom/CELL)!=EMPTY then collide.bottom+=ONE end
+  local topcell=Pos:init({x=x/CELL,y=hitbox.top/CELL})
+  if mget(topcell.x,topcell.y)!=EMPTY then
+   collidebox.top+=ONE
+   collidecells:add(topcell)
+  end
+  local bottomcell=Pos:init({x=x/CELL,y=hitbox.bottom/CELL})
+  if mget(bottomcell.x,bottomcell.y)!=EMPTY then
+   collidebox.bottom+=ONE
+   collidecells:add(bottomcell)
+  end
  end
- return collide
+ local collidecells=collidecells:all()
+ if count(collidecells)!=EMPTY then Brick:update(collidecells) end
+ return collidebox
 end
