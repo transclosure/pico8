@@ -32,10 +32,10 @@ function Sprite:init(s)
  sprite.dim=Pos:init({x=sprite.w*CELL,y=sprite.h*CELL})
  return sprite
 end
-function Sprite:box(pos)
+function Sprite:box(pos,border)
  return Box:init({
-  left=pos.x,right=pos.x+self.dim.x,
-  top=pos.y,bottom=pos.y+self.dim.y})
+  left=pos.x-border,right=pos.x+self.dim.x-ONE+border,
+  top=pos.y-border,bottom=pos.y+self.dim.y-ONE+border})
 end
 --[[
 Breakout Game
@@ -66,7 +66,7 @@ function Ball:update()
  if collidebox.top>ONE or collidebox.bottom>ONE then self.vel.y*=-ONE end
 end
 function Ball:draw()
- local undraw=self.spr:box(self.posprev)
+ local undraw=self.spr:box(self.posprev,ZERO)
  rectfill(undraw.left,undraw.top,undraw.right,undraw.bottom,BACKGROUND)
  spr(self.spr.s,self.pos.x,self.pos.y,self.spr.w,self.spr.h)
  self.posprev.x=self.pos.x self.posprev.y=self.pos.y
@@ -101,15 +101,15 @@ end
 PICO8 Extended Functionality
 --]]
 function _collide(obj)
- local hitbox=obj.spr:box(obj.pos)
+ local hitbox=obj.spr:box(obj.pos,ONE)
  local collide=Box:init()
  for y=hitbox.top,hitbox.bottom do
-  if mget((hitbox.left-ONE)/CELL,y/CELL)!=EMPTY then collide.left+=ONE end
-  if mget((hitbox.right+ONE)/CELL,y/CELL)!=EMPTY then collide.right+=ONE end
+  if mget(hitbox.left/CELL,y/CELL)!=EMPTY then collide.left+=ONE end
+  if mget(hitbox.right/CELL,y/CELL)!=EMPTY then collide.right+=ONE end
  end
  for x=hitbox.left,hitbox.right do
-  if mget(x/CELL,(hitbox.top-ONE)/CELL)!=EMPTY then collide.top+=ONE end
-  if mget(x/CELL,(hitbox.bottom+ONE)/CELL)!=EMPTY then collide.bottom+=ONE end
+  if mget(x/CELL,hitbox.top/CELL)!=EMPTY then collide.top+=ONE end
+  if mget(x/CELL,hitbox.bottom/CELL)!=EMPTY then collide.bottom+=ONE end
  end
  return collide
 end
