@@ -6,9 +6,8 @@ Constants
 --]]
 ZERO=0 ONE=1 TWO=2 THREE=3 FOUR=4 FIVE=5 SIX=6 SEVEN=7 EIGHT=8
 NINE=9 TEN=10 ELEVEN=11 TWELVE=12 THIRTEEN=13 FOURTEEN=14 FIFTEEN=15 SIXTEEN=16
-CELL=8 MIN=0 MAX=128
-DEBUG=true MEM=0 TCPU=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TFPS=8
-CURSOR_X=0x5f26 CURSOR_Y=0x5f27
+CELL=8 MIN=0 MAX=128 CURSOR_X=0x5f26 CURSOR_Y=0x5f27
+DEBUG=true MEM=0 TC=1 SCPU=2 DISP=3 CLIP=4 VER=5 PARAMS=6 FPS=7 TF=8
 BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 BACKGROUND=BLACK COLLISION=WHITE
@@ -35,7 +34,7 @@ function Sprite:init(s)
  sprite.dim=Pos:init({x=sprite.w*CELL,y=sprite.h*CELL})
  return sprite
 end
-function Sprite:hitbox(pos)
+function Sprite:box(pos)
  return Box:init({
   left=pos.x,right=pos.x+self.spr.dim.x,
   top=pos.y,bottom=pos.y+self.spr.dim.y})
@@ -62,7 +61,6 @@ function Ball:init()
   top=MAX*ONE/FIVE,bottom=MAX*THREE/FIVE}):randpos()
  ball.posprev=Pos:init({x=ball.pos.x,y=ball.pos.y})
  ball.collisions={}
- ball.bounced=false
  return ball
 end
 function Ball:undraw()
@@ -110,7 +108,7 @@ function _init()
  local x=MIN/CELL while x<MAX/CELL do
   local y=MIN/CELL while y<MAX/CELL do
    if x==MIN/CELL or x==(MAX-bw)/CELL or y==MIN/CELL or y==(MAX-bh)/CELL then
-    local bi=0 while bi<bw/CELL do
+    local bi=ZERO while bi<bw/CELL do
      mset(x+bi,y,Brick.spr.s+bi)
      bi+=ONE
     end
@@ -121,7 +119,7 @@ function _init()
   x+=bw/CELL
  end
 end
-function _update60()
+function _update60() -- XXX why update/draw are sync/async and seperate threads
  BALL:undraw() BALL.posprev.x=BALL.pos.x BALL.posprev.y=BALL.pos.y
  Brick:draw(BALL.collisions)
  BALL.collisions={}
@@ -131,8 +129,8 @@ function _update60()
 end
 function _draw()
  if DEBUG then
-  print(stat(MEM).."..."..stat(TCPU).."..."..stat(FPS).."/"..stat(TFPS),MIN,MIN,PINK)
-  rectfill(MIN,MIN,peek(CURSOR_X)+THREE*MAX/FOUR,peek(CURSOR_Y),BACKGROUND)
-  print(stat(MEM).."..."..stat(TCPU).."..."..stat(FPS).."/"..stat(TFPS),MIN,MIN,PINK)
+  print(stat(MEM).."\t"..stat(TC).."\t"..stat(FPS).."/"..stat(TF),MIN,MIN,PINK)
+  rectfill(MIN,MIN,peek(CURSOR_X)+TWO*MAX/THREE,peek(CURSOR_Y)-ONE,BACKGROUND)
+  print(stat(MEM).."\t"..stat(TC).."\t"..stat(FPS).."/"..stat(TF),MIN,MIN,PINK)
  end
 end
