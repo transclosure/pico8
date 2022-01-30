@@ -12,15 +12,10 @@ BLACK=0 DARKBLUE=1 PURPLE=2 DARKGREEN=3 BROWN=4 DARKGREY=5 LIGHTGREY=6 WHITE=7
 RED=8 ORANGE=9 YELLOW=10 GREEN=11 BLUE=12 LAVENDER=13 PINK=14 PEACH=15
 BACKGROUND=BLACK EMPTY=ZERO
 --[[
-Data Structures
+Positions, Boxes, Sprites
 --]]
 Pos={x=ZERO,y=ZERO} Pos.__index=Pos
-function Pos:init(p)
- local pos = p or {}
- setmetatable(pos,Pos)
- pos.x=flr(pos.x) pos.y=flr(pos.y)
- return pos
-end
+function Pos:init(p) return setmetatable(p or {},Pos) end
 Box={left=ZERO,right=ZERO,top=ZERO,bottom=ZERO} Box.__index=Box
 function Box:init(b) return setmetatable(b or {},Box) end
 function Box:randpos()
@@ -28,9 +23,6 @@ function Box:randpos()
   x=self.left+rnd(self.right-self.left),
   y=self.top+rnd(self.bottom-self.top)})
 end
---[[
-Sprites(Cells<->Pixels<->Hitboxes) and Maps(Positions<->Cells<->Objects)
---]]
 Sprite={s=ZERO,w=ONE,h=ONE,dim=Pos:init()} Sprite.__index=Sprite
 function Sprite:init(s)
  local sprite = s or {}
@@ -43,7 +35,10 @@ function Sprite:box(pos,border)
   left=pos.x-border,right=pos.x+self.dim.x-ONE+border,
   top=pos.y-border,bottom=pos.y+self.dim.y-ONE+border})
 end
-Map={} Map.__index=Map
+--[[
+Object Map (Positions<->Cells<->Objects)
+--]]
+Map={updates={},draws={}} Map.__index=Map
 function Map:init() return setmetatable({},Map) end
 function Map:put(obj,add_else_del)
  local celli=flr(obj.pos.y/CELL)
@@ -61,7 +56,10 @@ function Map:put(obj,add_else_del)
   end
   i+=ONE
  end
- self:draw(cellj,celli,cellj*CELL,celli*CELL,obj.spr.w,obj.spr.h) -- XXX message scheduling
+ add(self.draws,{
+  celx=cellj,cely=celli,
+  sx=cellj*CELL,sy=celli*CELL,
+  celw=obj.spr.w,celh=obj.spr.h})
 end
 function Map:get(pos)
  local celli=flr(pos.y/CELL)
@@ -69,7 +67,7 @@ function Map:get(pos)
  if self[celli] then return self[celli][cellj]
  else return nil end
 end
-function Map:update(poss)
+function Map:schedule(poss)
  local objs={}
  for pos in all(poss) do
   local obj=self:get(pos)
@@ -78,14 +76,21 @@ function Map:update(poss)
    add(objs,obj)
   end
  end
- for obj in all(objs) do obj:update() end -- XXX message scheduling
+ for obj in all(objs) do
+  self:put(obj,true)
+  add(self.updates,obj)
+ end
 end
-function Map:draw(celx,cely,sx,sy,celw,celh)
- local undraw=Box:init({
-  left=sx,top=sy,
-  right=sx+celw*CELL-ONE,bottom=sy+celh*CELL-ONE})
- rectfill(undraw.left,undraw.top,undraw.right,undraw.bottom,BACKGROUND)
- map(celx,cely,sx,sy,celw,celh)
+function Map:update()
+ for obj in all(self.updates) do obj:update() end
+ self.updates={}
+end
+function Map:draw()
+ for d in all(self.draws) do
+  rectfill(d.sx,d.sy,(d.sx+d.celw*CELL)-ONE,(d.sy+d.celh*CELL)-ONE,BACKGROUND)
+  map(d.celx,d.cely,d.sx,d.sy,d.celw,d.celh)
+ end
+ self.draws={}
 end
 --[[
 Breakout Game
@@ -104,14 +109,17 @@ end
 function Brick:update()
  if self.play then
   self.spr.s+=TWO -- FIXME bad sprite change needs data structure
-  if self.spr.s!=Brick.spr.s then MAP:put(self,true) end
+  if self.spr.s!=Brick.spr.s then MAP:put(self,true)
+  else MAP:put(self,false) end
  else MAP:put(self,true) end -- XXX who adds the brick, self or init caller?
 end
-Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),vel=Pos:init({x=ONE,y=ONE})}
+Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),v=THREE}
 Ball.__index=Ball
 function Ball:init()
  local ball={}
  setmetatable(ball,Ball)
+ assert(Ball.v<EIGHT)
+ ball.d=Pos:init({x=Ball.v,y=Ball.v})
  ball.pos=Box:init({
   left=MAX*ONE/FIVE,right=MAX*FOUR/FIVE,
   top=MAX*THREE/SIX,bottom=MAX*FOUR/SIX}):randpos()
@@ -119,10 +127,10 @@ function Ball:init()
  return ball
 end
 function Ball:update()
- self.pos.x+=self.vel.x self.pos.y+=self.vel.y
  local collidebox=_collide(self)
- if collidebox.left>ONE or collidebox.right>ONE then self.vel.x*=-ONE end
- if collidebox.top>ONE or collidebox.bottom>ONE then self.vel.y*=-ONE end
+ if collidebox.left>Ball.v or collidebox.right>Ball.v then self.d.x*=-ONE end
+ if collidebox.top>Ball.v or collidebox.bottom>Ball.v then self.d.y*=-ONE end
+ self.pos.x+=self.d.x self.pos.y+=self.d.y
 end
 function Ball:draw()
  local undraw=self.spr:box(self.posprev,ZERO)
@@ -151,9 +159,13 @@ function _init()
   end
  end
 end
-function _update60() BALL:update() end
+function _update60()
+ BALL:update()
+ MAP:update()
+end
 function _draw()
  BALL:draw()
+ MAP:draw()
  if DEBUG then
   print(stat(MEM).."\t"..stat(TC).."\t"..stat(FPS).."/"..stat(TF),MIN,MIN,PINK)
   rectfill(MIN,MIN,peek(CURSOR_X)+TWO*MAX/THREE,peek(CURSOR_Y)-ONE,BACKGROUND)
@@ -191,6 +203,6 @@ function _collide(obj)
    add(collisions,bottompos)
   end
  end
- if count(collisions)!=EMPTY then MAP:update(collisions) end -- XXX message scheduling
+ if count(collisions)!=EMPTY then MAP:schedule(collisions) end
  return collidebox
 end
