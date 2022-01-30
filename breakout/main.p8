@@ -95,23 +95,26 @@ end
 --[[
 Breakout Game
 --]]
-Brick={spr=Sprite:init({s=TEN-ONE,w=TWO,h=ONE}),play=false}
+BlueBrick=Sprite:init({s=TWO-ONE,w=TWO,h=ONE})
+GreenBrick=Sprite:init({s=FOUR-ONE,w=TWO,h=ONE})
+YellowBrick=Sprite:init({s=SIX-ONE,w=TWO,h=ONE})
+RedBrick=Sprite:init({s=EIGHT-ONE,w=TWO,h=ONE})
+GrayBrick=Sprite:init({s=TEN-ONE,w=TWO,h=ONE})
+DeltaBrick={
+ [BlueBrick]=GreenBrick,
+ [GreenBrick]=YellowBrick,
+ [YellowBrick]=RedBrick,
+ [RedBrick]=GrayBrick,
+ [GrayBrick]=GrayBrick}
+Brick={pos=Pos:init(),spr=GrayBrick,play=false}
 Brick.__index=Brick
-function Brick:init(b)
- local brick = b or {}
- setmetatable(brick,Brick)
- if brick.play then -- FIXME bad sprite change needs data structure
-  brick.spr=Sprite:init({s=ONE,w=Brick.spr.w,h=Brick.spr.h})
- end
- MAP:put(brick,true) -- XXX who adds the brick, self or init caller?
- return brick
-end
+function Brick:init(b) return setmetatable(b or {},Brick) end
 function Brick:update()
  if self.play then
-  self.spr.s+=TWO -- FIXME bad sprite change needs data structure
-  if self.spr.s!=Brick.spr.s then MAP:put(self,true)
+  self.spr=DeltaBrick[self.spr]
+  if self.spr!=GrayBrick then MAP:put(self,true)
   else MAP:put(self,false) end
- else MAP:put(self,true) end -- XXX who adds the brick, self or init caller?
+ else MAP:put(self,true) end
 end
 Ball={spr=Sprite:init({s=SIXTEEN-ONE,w=ONE,h=ONE}),v=THREE}
 Ball.__index=Ball
@@ -150,10 +153,10 @@ function _init()
  for x=MIN,MAX-bw,bw do
   for y=MIN,MAX-bh,bh do
    if x==MIN or x==MAX-bw or y==MIN or y==MAX-bh then
-    Brick:init({pos=Pos:init({x=x,y=y})})
+    Map:put(Brick:init({pos=Pos:init({x=x,y=y})}),true)
    else
     if y<MAX-bh*EIGHT then
-     Brick:init({pos=Pos:init({x=x,y=y}),play=true})
+     Map:put(Brick:init({pos=Pos:init({x=x,y=y}),spr=BlueBrick,play=true}),true)
     end
    end
   end
